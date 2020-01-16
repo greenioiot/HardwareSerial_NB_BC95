@@ -1,11 +1,11 @@
 #include "HardwareSerial_NB_BC95.h"
 
  
-String deviceToken = "SeZcmHmD1BdnHLynN013";
+String deviceToken = "jGmVGPqcZKlXt8ppagBT";
 String serverIP = "103.27.203.83"; // Your Server IP;
 String serverPort = "9956"; // Your Server Port;
 String json = "";
-String udpData = "{\"Tn\":SeZcmHmD1BdnHLynN013,\"temp\":33.3}";
+String udpData = "{\"Tn\":\"jGmVGPqcZKlXt8ppagBT\",\"temp\":34.3}";
 
 HardwareSerial_NB_BC95 AISnb;
 
@@ -18,6 +18,7 @@ void setup()
   AISnb.debug = true;
 
   Serial.begin(115200);
+
  
   AISnb.setupDevice(serverPort);
 

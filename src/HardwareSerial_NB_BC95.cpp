@@ -507,9 +507,13 @@ UDPSend HardwareSerial_NB_BC95:: sendUDPmsg( String addressI,String port,unsigne
 	if (debug) Serial.println();
 
 	AIS_NB_BC95_RES res = wait_rx_bc(5000,F("OK"));
-	ret.status = false;
-	ret.socket = 0;
-	ret.length = 0;
+	//ret.status = false;
+	//ret.socket = 0;
+	//ret.length = 0;
+//	Serial.println("--debug.sendUDPmsg--");
+//	Serial.println(ret.status);
+//	Serial.println(ret.length );
+//	Serial.println("--end--");
 	if(res.status)
 	{
 		Serial.println(res.temp);
@@ -519,7 +523,9 @@ UDPSend HardwareSerial_NB_BC95:: sendUDPmsg( String addressI,String port,unsigne
 		ret.socket = res.temp.substring(index-1,index).toInt();
 		ret.length = res.temp.substring(index+1,index2).toInt();
 		if (debug) Serial.println("# Send OK");
-	}else {if (debug) Serial.println("# Send ERROR");}
+	}else  {
+		if (debug) Serial.println("# Send ERROR");
+		}
 
 	//Serial.println(F("\n###############################################"));
 
@@ -619,6 +625,10 @@ UDPSend HardwareSerial_NB_BC95:: sendUDPmsgStr(String addressI,String port,Strin
 	int x_len = data.length();
 	char buf[x_len+2];
 	data.toCharArray(buf,x_len+1);
+	Serial.println("--debug--");
+	Serial.println(sendStr);
+	Serial.println(x_len);
+	
 	return(sendUDPmsg(addressI,port,x_len,buf,MODE_STRING));
 
 }
@@ -647,7 +657,8 @@ AIS_NB_BC95_RES HardwareSerial_NB_BC95:: wait_rx_bc(long tout,String str_wait)
 		if(myserial.available())
 		{
 			input = myserial.readStringUntil('\n');
-
+//Serial.println("--debug.waiting");
+//Serial.println(input);
 			res_.temp+=input;
 			if(input.indexOf(str_wait)!=-1)
 			{
@@ -668,7 +679,7 @@ AIS_NB_BC95_RES HardwareSerial_NB_BC95:: wait_rx_bc(long tout,String str_wait)
 			pv_ok = current_ok;
 		}
 	}
-
+Serial.println("--end--");
 	res_.status = res;
 	res_.data = input;
 	return(res_);
