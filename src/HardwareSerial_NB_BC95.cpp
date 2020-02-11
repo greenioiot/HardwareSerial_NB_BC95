@@ -100,7 +100,13 @@ bool HardwareSerial_NB_BC95:: waitReady()
 	static bool reset_state=false;
 	if(myserial.available())
 	{
+		
 		String input = myserial.readStringUntil('\n');
+		if(debug) {
+			Serial.print("debug:");
+			Serial.println(input);
+			
+		}	
 		if(input.indexOf(F("OK"))!=-1)
 		{
 				return(true);
@@ -321,16 +327,30 @@ String HardwareSerial_NB_BC95:: getAPN()
 bool HardwareSerial_NB_BC95:: attachNB(String serverPort)
 {
 	bool ret=false;
+	Serial.println("attachNB");
 	if(!getNBConnect())
 	{
-		if (debug) Serial.print(F("# Connecting NB-IoT Network"));
+		
 		for(int i=1;i<60;i+=1)
 		{
+			if (debug) { 
+					
+				Serial.print(F("# Connecting NB-IoT Network"));
+				Serial.print("i:");
+				Serial.println(i);
+			}
 				setPhoneFunction(1);
 				setAutoConnectOn();
 				cgatt(1);
-				delay(3000);
-				if(getNBConnect()){ ret=true; break;}
+				delay(4000);
+				//if(getNBConnect()){ 
+					ret=true; 
+					if (debug) Serial.print(F("> Connected"));
+					createUDPSocket(serverPort);
+					 
+					break;
+				
+				//}
 				Serial.print(F("."));
 		}
 	} else
@@ -338,14 +358,14 @@ bool HardwareSerial_NB_BC95:: attachNB(String serverPort)
 			return true;
 		}
 
-	if (ret)
-	{
-		if (debug) Serial.print(F("> Connected"));
-	    createUDPSocket(serverPort);
-	}
-	else {
-			if (debug) Serial.print(F("> Disconnected"));
-		 }
+	//if (ret)
+	//{
+	//	if (debug) Serial.print(F("> Connected"));
+	//    createUDPSocket(serverPort);
+	//}
+	//else {
+	//		if (debug) Serial.print(F("> Disconnected"));
+	//	 }
 	if (debug) Serial.println(F("\n################################################################"));
 	return ret;
 }
@@ -379,21 +399,32 @@ bool HardwareSerial_NB_BC95:: cgatt(unsigned char mode)
 
 bool HardwareSerial_NB_BC95:: getNBConnect()
 {
+	Serial.println("getNBConnect");
 	myserial.println(F("AT+CGATT?"));
 	if (debug) Serial.println(F("AT+CGATT?"));
-	AIS_NB_BC95_RES res = wait_rx_bc(500,F("+CGATT"));
+	AIS_NB_BC95_RES res = wait_rx_bc(1500,F("+CGATT"));
 	bool ret;
 	res.data;
-	if (debug) Serial.println(res.data);
+	
 	if(res.status)
-	{
+	{	if (debug){ 
+		Serial.print("result:");
+		Serial.println(res.data);
+		}
         if(res.data.indexOf(F("+CGATT:0"))!=-1)
 			ret = false;
 		if(res.data.indexOf(F("+CGATT:1"))!=-1)
 			ret = true;
 	}
+
 	res = wait_rx_bc(500,F("OK"));
-	
+	if (debug){ 
+		Serial.print("result:");
+		Serial.println(res.data);
+		Serial.println(ret);
+		
+	}
+	Serial.println("getNBConnect.end()");
 	return(ret);
 }
 
@@ -433,6 +464,7 @@ signal HardwareSerial_NB_BC95:: getSignal()
 
 void HardwareSerial_NB_BC95:: createUDPSocket(String port)
 {
+	
 	myserial.print(F("AT+NSOCR=DGRAM,17,"));
 	if (debug) Serial.println(F("AT+NSOCR=DGRAM,17,"));
 	
@@ -443,8 +475,13 @@ void HardwareSerial_NB_BC95:: createUDPSocket(String port)
 
 	delay(3000);
 	res = wait_rx_bc(500,F("OK"));
-
+	if (debug){
+		Serial.print("		createUDPSocket:");
+		Serial.println(res.status);
+	}
+	//if(!res.status) ESP.restart();
 }
+
 
 UDPSend HardwareSerial_NB_BC95:: sendUDPmsg( String addressI,String port,unsigned int len,char *data,unsigned char send_mode)
 {
@@ -510,10 +547,10 @@ UDPSend HardwareSerial_NB_BC95:: sendUDPmsg( String addressI,String port,unsigne
 	//ret.status = false;
 	//ret.socket = 0;
 	//ret.length = 0;
-//	Serial.println("--debug.sendUDPmsg--");
-//	Serial.println(ret.status);
-//	Serial.println(ret.length );
-//	Serial.println("--end--");
+	//Serial.println("--debug.sendUDPmsg--");
+	Serial.println(ret.status);
+	Serial.println(ret.length );
+	Serial.println("--end--");
 	if(res.status)
 	{
 		Serial.println(res.temp);
@@ -524,6 +561,8 @@ UDPSend HardwareSerial_NB_BC95:: sendUDPmsg( String addressI,String port,unsigne
 		ret.length = res.temp.substring(index+1,index2).toInt();
 		if (debug) Serial.println("# Send OK");
 	}else  {
+		if (debug) Serial.println("Reconnect");
+		createUDPSocket(port);
 		if (debug) Serial.println("# Send ERROR");
 		}
 
@@ -625,9 +664,9 @@ UDPSend HardwareSerial_NB_BC95:: sendUDPmsgStr(String addressI,String port,Strin
 	int x_len = data.length();
 	char buf[x_len+2];
 	data.toCharArray(buf,x_len+1);
-	Serial.println("--debug--");
-	Serial.println(sendStr);
-	Serial.println(x_len);
+	//Serial.println("--debug--");
+	//Serial.println(sendStr);
+	//Serial.println(x_len);
 	
 	return(sendUDPmsg(addressI,port,x_len,buf,MODE_STRING));
 
@@ -657,8 +696,9 @@ AIS_NB_BC95_RES HardwareSerial_NB_BC95:: wait_rx_bc(long tout,String str_wait)
 		if(myserial.available())
 		{
 			input = myserial.readStringUntil('\n');
-//Serial.println("--debug.waiting");
+//Serial.println("	--debug.waiting");
 //Serial.println(input);
+//Serial.println("	--debug.end");
 			res_.temp+=input;
 			if(input.indexOf(str_wait)!=-1)
 			{
@@ -679,7 +719,7 @@ AIS_NB_BC95_RES HardwareSerial_NB_BC95:: wait_rx_bc(long tout,String str_wait)
 			pv_ok = current_ok;
 		}
 	}
-Serial.println("--end--");
+//Serial.println("	--end--");
 	res_.status = res;
 	res_.data = input;
 	return(res_);
