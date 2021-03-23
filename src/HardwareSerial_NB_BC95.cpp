@@ -27,19 +27,19 @@ void event_null(char *data){}
 
 //AltSoftSerial myserial;
 //ESP32 China
-//HardwareSerial myserial(2);
+//HardwareSerial myserial(1);
 //#define SERIAL1_RXPIN 12
 //#define SERIAL1_TXPIN 13
 
-//Board Thingcontrol v1
-HardwareSerial myserial(1);
-#define SERIAL1_RXPIN 14
-#define SERIAL1_TXPIN 27
+//Board Thingcontrol v1 new V2
+//HardwareSerial myserial(1);
+//#define SERIAL1_RXPIN 14
+//#define SERIAL1_TXPIN 27
 
 //Board Thingcontrol v2
-//HardwareSerial myserial(1);
-//#define SERIAL1_RXPIN 27 
-//#define SERIAL1_TXPIN 14
+HardwareSerial myserial(1);
+#define SERIAL1_RXPIN 27 
+#define SERIAL1_TXPIN 14
 
 HardwareSerial_NB_BC95::HardwareSerial_NB_BC95()
 {
@@ -55,6 +55,7 @@ void HardwareSerial_NB_BC95:: setupDevice(String serverPort)
 	Serial.println(F("############ HardwareSerial_NB_BC95 Library by AIS/DEVI V1.0.4 ############"));
 	reset();
 	String imei = getIMEI();
+	String nccid = getNCCID();
 	if (debug) Serial.print(F("# Module IMEI-->  "));
 	if (debug) Serial.println(imei);
 	String fmver = getFirmwareVersion();
@@ -63,7 +64,8 @@ void HardwareSerial_NB_BC95:: setupDevice(String serverPort)
 	String imsi = getIMSI();
 	if (debug) Serial.print(F("# IMSI SIM-->  "));
 	if (debug) Serial.println(imsi);
-	
+	if (debug) Serial.print(F("# NCCID SIM-->  "));
+	if (debug) Serial.println(nccid);
 	attachNB(serverPort);
 }
 
@@ -402,7 +404,7 @@ bool HardwareSerial_NB_BC95:: getNBConnect()
 	Serial.println("getNBConnect");
 	myserial.println(F("AT+CGATT?"));
 	if (debug) Serial.println(F("AT+CGATT?"));
-	AIS_NB_BC95_RES res = wait_rx_bc(1500,F("+CGATT"));
+	AIS_NB_BC95_RES res = wait_rx_bc(4000,F("+CGATT"));
 	bool ret;
 	res.data;
 	
@@ -547,12 +549,17 @@ UDPSend HardwareSerial_NB_BC95:: sendUDPmsg( String addressI,String port,unsigne
 	//ret.status = false;
 	//ret.socket = 0;
 	//ret.length = 0;
-	//Serial.println("--debug.sendUDPmsg--");
-	Serial.println(ret.status);
-	Serial.println(ret.length );
+	if (debug) {
+		Serial.println("--debug.sendUDPmsg--");
+		Serial.println(ret.status);
+		Serial.println(ret.length );
+	}
+	
 	Serial.println("--end--");
+	Serial.println(res.data );
 	if(res.status)
 	{
+		Serial.print("res.temp:");
 		Serial.println(res.temp);
 	    ret.status = true;
 		int index = res.temp.indexOf(F(","));
@@ -566,7 +573,7 @@ UDPSend HardwareSerial_NB_BC95:: sendUDPmsg( String addressI,String port,unsigne
 		if (debug) Serial.println("# Send ERROR");
 		}
 
-	//Serial.println(F("\n###############################################"));
+	Serial.println(F("\n###############################################"));
 
 	return(ret);
 }
@@ -575,16 +582,22 @@ UDPReceive HardwareSerial_NB_BC95:: waitResponse()
 {
   unsigned long current=millis();
   UDPReceive rx_ret;
-
-  if(en_rcv && (current-previous>=250) && !(myserial.available()))
+  Serial.println("waitResponse");
+  Serial.print(current); Serial.print(" "); Serial.print(previous); Serial.print(" "); Serial.println(myserial.available());
+  if((current-previous>=250))
+  
   {
       myserial.println(F("AT+NSORF=0,100"));
 	  if (debug) Serial.println(F("AT+NSORF=0,100"));
       previous=current;
   }
-
+	AIS_NB_BC95_RES res = wait_rx_bc(5000,F("OK"));
+	Serial.println("	wait for response ");
+	
+	/*
   if(myserial.available())
   {
+	  Serial.println(".....");
     char data=(char)myserial.read();
     if(data=='\n' || data=='\r')
     {
@@ -599,7 +612,12 @@ UDPReceive HardwareSerial_NB_BC95:: waitResponse()
     {
       input+=data;
     }
-    if(debug) Serial.println(input);
+    if(debug) {
+		Serial.println("input:");
+
+		Serial.print(input);
+	
+	}
   }
   if(end){
       if(input.indexOf(F("+NSONMI:"))!=-1)
@@ -608,29 +626,37 @@ UDPReceive HardwareSerial_NB_BC95:: waitResponse()
           if(debug) Serial.println(input);
           if(input.indexOf(F("+NSONMI:"))!=-1)
           {
-            if(debug) Serial.print(F("found NSONMI "));
+            if(debug) Serial.print(F("			found NSONMI "));
             myserial.println(F("AT+NSORF=0,100"));
-            input=F("");
+            //input=F("");
             send_NSOMI=true;
           }
           end=false;
       }
       else
         {
+				*/	
+			//Serial.println(res.temp);
+			//Serial.println("		debug response");
+			input = res.temp;
+			 			
           if(debug) Serial.print(F("get buffer: "));
           if(debug) Serial.println(input);
 
           end=false;
 
-            int index1 = input.indexOf(F(","));
+            int index1 = input.indexOf(",");
+			Serial.println(index1);
             if(index1!=-1)
             {
-              int index2 = input.indexOf(F(","),index1+1);
+				Serial.println("	parse....");
+				
+              int index2 = input.indexOf(",",index1+1);
 
-			  int index3 = input.indexOf(F(","),index2+1);
-			  int index4 = input.indexOf(F(","),index3+1);
-			  int index5 = input.indexOf(F(","),index4+1);
-			  int index6 = input.indexOf(F("\r"));
+			  int index3 = input.indexOf(",",index2+1);
+			  int index4 = input.indexOf(",",index3+1);
+			  int index5 = input.indexOf(",",index4+1);
+			  int index6 = input.indexOf("\r");
 
 			  rx_ret.socket = input.substring(0,index1).toInt();
 			  rx_ret.ip_address = input.substring(index1+1,index2);
@@ -638,15 +664,23 @@ UDPReceive HardwareSerial_NB_BC95:: waitResponse()
 			  rx_ret.length = input.substring(index3+1,index4).toInt();
 			  rx_ret.data = input.substring(index4+1,index5);
 			  rx_ret.remaining_length = input.substring(index5+1,index6).toInt();
-
+			//  Serial.print("rx:");
+			//  Serial.println(rx_ret.data);
+			  
+		  
+			  
 			  if (debug) receive_UDP(rx_ret);
-
+			}
+/*
            }
 
           send_NSOMI=false;
           input=F("");
           }
         }
+		
+		*/
+
 		return rx_ret;
 }//end waitResponse
 
@@ -690,15 +724,15 @@ AIS_NB_BC95_RES HardwareSerial_NB_BC95:: wait_rx_bc(long tout,String str_wait)
 	AIS_NB_BC95_RES res_;
 	res_.temp="";
 	res_.data = "";
-
+//sSerial.println("	--wait_rx_bc");
 	while(flag_out)
 	{
 		if(myserial.available())
 		{
 			input = myserial.readStringUntil('\n');
-//Serial.println("	--debug.waiting");
+//Serial.print("	");
 //Serial.println(input);
-//Serial.println("	--debug.end");
+//Serial.println("	--debug.in");
 			res_.temp+=input;
 			if(input.indexOf(str_wait)!=-1)
 			{
@@ -719,7 +753,7 @@ AIS_NB_BC95_RES HardwareSerial_NB_BC95:: wait_rx_bc(long tout,String str_wait)
 			pv_ok = current_ok;
 		}
 	}
-//Serial.println("	--end--");
+//Serial.println("	--end wait_rx_bc--");
 	res_.status = res;
 	res_.data = input;
 	return(res_);
@@ -795,11 +829,11 @@ char HardwareSerial_NB_BC95:: char_to_byte(char c)
 void HardwareSerial_NB_BC95:: receive_UDP(UDPReceive rx)
 {
   String dataStr;
-  Serial.println(F("################################################################"));
-  Serial.println(F("# Incoming Data"));
-  Serial.println("# IP--> " + rx.ip_address);
-  Serial.println("# Port--> " + String(rx.port));
-  Serial.println("# Length--> " + String(rx.length));
+  //Serial.println(F("################################################################"));
+  //Serial.println(F("# Incoming Data"));
+  //Serial.println("# IP--> " + rx.ip_address);
+ // Serial.println("# Port--> " + String(rx.port));
+ //Serial.println("# Length--> " + String(rx.length));
   if(sendMode == MODE_STRING_HEX)
   {
 		Serial.println("# Data--> " + rx.data);
@@ -809,8 +843,8 @@ void HardwareSerial_NB_BC95:: receive_UDP(UDPReceive rx)
 		dataStr = toString(rx.data);
 		Serial.println("# Data--> " + dataStr);
   }
-  Serial.println("# Remaining length--> " + String(rx.remaining_length));
-  Serial.println(F("################################################################"));
+//  Serial.println("# Remaining length--> " + String(rx.remaining_length));
+//  Serial.println(F("################################################################"));
 }
 
 void HardwareSerial_NB_BC95:: myFlush()
